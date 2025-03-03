@@ -9,6 +9,11 @@ public class UserPartitioner implements Partitioner {
 
     @Override
     public int partition(String topic, Object key, byte[] keyBytes, Object value, byte[] valueBytes, Cluster cluster) {
+        if (key == null) {
+            // Handle the case where the key is null (for example, return a random partition or a default partition)
+            return 0;
+        }
+
         String username = (String) key;
         int numPartitions = cluster.partitionCountForTopic(topic);
 
@@ -17,13 +22,19 @@ public class UserPartitioner implements Partitioner {
             case "samridh": return 0;
             case "tarun": return 1;
             case "alisha": return 2;
-            default: return Math.abs(username.hashCode()) % numPartitions; // Default hashing
+            default:
+                // Default partitioning based on hash of username
+                return Math.abs(username.hashCode()) % numPartitions;
         }
     }
 
     @Override
-    public void close() {}
+    public void close() {
+        // You can close resources if any are initialized in the partitioner
+    }
 
     @Override
-    public void configure(Map<String, ?> configs) {}
+    public void configure(Map<String, ?> configs) {
+        // You can initialize any configuration here if needed
+    }
 }

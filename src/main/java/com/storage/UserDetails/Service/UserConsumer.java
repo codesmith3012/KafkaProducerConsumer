@@ -23,23 +23,44 @@ public class UserConsumer {
         System.out.println("✅ Processed User: " + user + " | Partition: " + partition);
     }
 
-    // ✅ Fetch ALL Users From ALL Partitions
-    public Map<Integer, List<User>> getAllUsersByPartition() {
-        return partitionUserStore;
-    }
-
-    // ✅ Fetch Limited Users from Selected Partitions
-    public Map<Integer, List<User>> getUsersByPartitions(Map<Integer, Integer> partitionLimits) {
+    public Map<Integer, List<User>> getUsersFromPartitions(Map<Integer, Integer> partitionData) {
         Map<Integer, List<User>> result = new HashMap<>();
 
-        for (Map.Entry<Integer, Integer> entry : partitionLimits.entrySet()) {
-            int partition = entry.getKey();
-            int limit = entry.getValue();
-
-            List<User> users = partitionUserStore.getOrDefault(partition, Collections.emptyList());
-            result.put(partition, users.subList(0, Math.min(limit, users.size())));
+        for (Map.Entry<Integer, Integer> entry : partitionData.entrySet()) {
+            Integer partitionNo = entry.getKey();
+            Integer dataCount = entry.getValue();
+            List<User> users = partitionUserStore.getOrDefault(partitionNo, Collections.emptyList());
+            result.put(partitionNo, users.subList(0, Math.min(dataCount, users.size())));
         }
 
         return result;
+    }
+
+    // ✅ Fetch Users By Multiple Partitions and Ranges
+    public Map<Integer, List<User>> getUsersByMultiplePartitionsAndRanges(Map<Integer, Map<String, Integer>> partitionRanges) {
+        Map<Integer, List<User>> result = new HashMap<>();
+
+        for (Map.Entry<Integer, Map<String, Integer>> entry : partitionRanges.entrySet()) {
+            int partition = entry.getKey();
+            Map<String, Integer> range = entry.getValue();
+            int startIndex = range.get("startIndex");
+            int endIndex = range.get("endIndex");
+
+            List<User> users = partitionUserStore.getOrDefault(partition, Collections.emptyList());
+
+            // Ensure indices are within valid range
+            int fromIndex = Math.max(0, startIndex);
+            int toIndex = Math.min(users.size(), endIndex);
+
+            // Add the users for the specific partition and range
+            result.put(partition, users.subList(fromIndex, toIndex));
+        }
+
+        return result;
+    }
+
+    // ✅ Fetch Users From All Partitions
+    public Map<Integer, List<User>> getAllUsersByPartition() {
+        return partitionUserStore;
     }
 }

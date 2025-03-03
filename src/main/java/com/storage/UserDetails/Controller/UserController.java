@@ -32,9 +32,15 @@ public class UserController {
         return userConsumer.getAllUsersByPartition();
     }
 
-    // ✅ Fetch specific user data from requested partitions with limits
-    @PostMapping("/partitions")
-    public Map<Integer, List<User>> getPartitionData(@RequestBody Map<Integer, Integer> partitionLimits) {
-        return userConsumer.getUsersByPartitions(partitionLimits);
+    // ✅ Fetch specific user data from requested partition with a limit on the number of records
+    @PostMapping("/partition")
+    public Map<Integer, List<User>> getPartitionData(@RequestBody Map<Integer, Integer> partitionData) {
+        return userConsumer.getUsersFromPartitions(partitionData);
+    }
+
+    // ✅ Fetch user data from multiple partitions with corresponding ranges
+    @PostMapping("/partitions/ranges")
+    public Map<Integer, List<User>> getUserDataByMultiplePartitionsAndRanges(@RequestBody Map<Integer, Map<String, Integer>> partitionRanges) {
+        return userConsumer.getUsersByMultiplePartitionsAndRanges(partitionRanges);
     }
 }
