@@ -4,6 +4,7 @@ import com.storage.UserDetails.Service.UserConsumer;
 import com.storage.UserDetails.Service.UserProducer;
 import com.storage.UserDetails.entity.User;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -38,9 +39,21 @@ public class UserController {
         return userConsumer.getUsersFromPartitions(partitionData);
     }
 
+    @PostMapping("/fetch-with-offset-tracking")
+    public ResponseEntity<Map<Integer, List<User>>> getUsersWithOffsetTracking(@RequestBody Map<Integer, Integer> partitionData) {
+        Map<Integer, List<User>> users = userConsumer.getUsersWithOffsetTracking(partitionData);
+        return ResponseEntity.ok(users);
+    }
+
     // ✅ Fetch user data from multiple partitions with corresponding ranges
     @PostMapping("/partitions/ranges")
     public Map<Integer, List<User>> getUserDataByMultiplePartitionsAndRanges(@RequestBody Map<Integer, Map<String, Integer>> partitionRanges) {
         return userConsumer.getUsersByMultiplePartitionsAndRanges(partitionRanges);
+    }
+    @PostMapping("/consume-round-robin")
+    public String consumeUsersInRoundRobinOrder() {
+        // Trigger the round-robin consumption of users from partitions
+        userConsumer.consumeUsersInRoundRobinOrder();
+        return "✅ Consumption from partitions in round-robin order triggered.";
     }
 }
