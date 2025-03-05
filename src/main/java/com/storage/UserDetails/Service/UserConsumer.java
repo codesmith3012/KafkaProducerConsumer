@@ -5,8 +5,10 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @Service
 public class UserConsumer {
@@ -94,46 +96,71 @@ public class UserConsumer {
 
         return result;
     }
-    public void consumeUsersInRoundRobinOrder() {
-        // This will hold the partition numbers in the round-robin order
+    // ✅ Method for Consuming Users in Round-Robin Order Using Threads
+    public void consumeUsersInRoundRobinOrderUsingThreads() {
+        // List of partition numbers in the round-robin order
         List<Integer> partitionOrder = Arrays.asList(0, 1, 2);
 
-        // Define the limits directly in the function
-        int limitForPartition0 = 3;  // Partition 0 can process 5 users
-        int limitForPartition1 = 3;  // Partition 1 can process 3 users
-        int limitForPartition2 = 3;  // Partition 2 can process 4 users
+        // Define limits directly in the function
+        int limitForPartition0 = 2;  // Partition 0 can process 5 users
+        int limitForPartition1 = 1;  // Partition 1 can process 3 users
+        int limitForPartition2 = 1;  // Partition 2 can process 4 users
 
-        boolean dataRemaining = true;
+        AtomicBoolean dataRemaining = new AtomicBoolean(true);
+
+        // List to store threads
+        List<Thread> threads = new ArrayList<>();
 
         // Continue until no more data is left in any of the partitions
-        while (dataRemaining) {
-            dataRemaining = false;
+        while (dataRemaining.get()) {
+            dataRemaining.set(false); // Assume no data remaining at the start of each round
 
-            // Iterate over each partition in round-robin order
+            // Create and start threads for each partition
             for (int partition : partitionOrder) {
-                // Get the users for the current partition
-                List<User> users = partitionUserStore.getOrDefault(partition, Collections.emptyList());
-                int lastOffset = lastConsumedOffset.getOrDefault(partition, 0);
-
-                // Set limits based on the partition (directly in the function)
-                int limit = (partition == 0) ? limitForPartition0 :
+                final int currentPartition = partition;
+                final int limit = (partition == 0) ? limitForPartition0 :
                         (partition == 1) ? limitForPartition1 :
                                 limitForPartition2;
 
-                // Calculate how many users we can fetch for this partition
-                int availableUsers = Math.min(users.size() - lastOffset, limit);
+                // Create a thread for consuming users from this partition
+                Thread partitionThread = new Thread(() -> {
+                    List<User> users = partitionUserStore.getOrDefault(currentPartition, Collections.emptyList());
+                    int lastOffset = lastConsumedOffset.getOrDefault(currentPartition, 0);
 
-                if (availableUsers > 0) {
-                    dataRemaining = true;  // Data is still available
+                    // Calculate how many users we can consume for this partition
+                    int availableUsers = Math.min(users.size() - lastOffset, limit);
 
-                    // Fetch users for this partition and update the offset
-                    List<User> usersToConsume = users.subList(lastOffset, lastOffset + availableUsers);
-                    System.out.println("✅ Consuming users from Partition " + partition + ": " + usersToConsume);
-                    lastConsumedOffset.put(partition, lastOffset + availableUsers);
-                } else {
-                    // If no data is left to consume in the partition, just indicate that
-                    System.out.println("✅ No more users to consume from Partition " + partition);
+                    if (availableUsers > 0) {
+                        dataRemaining.set(true); // Data is still available
+
+                        // Fetch users for this partition and update the offset
+                        List<User> usersToConsume = users.subList(lastOffset, lastOffset + availableUsers);
+                        Instant now = Instant.now(); // Get current timestamp
+
+                        // Print the timestamp at the second level along with the consumed users
+                        System.out.println("✅ Consuming users from Partition " + currentPartition + ": "
+                                + usersToConsume + " | Consumed at: " + now.getEpochSecond() + " seconds");
+
+                        lastConsumedOffset.put(currentPartition, lastOffset + availableUsers);
+                    } else {
+                        // If no data is left to consume in the partition
+                        System.out.println("✅ No more users to consume from Partition " + currentPartition);
+                    }
+                });
+
+                // Start the thread for this partition
+                partitionThread.start();
+                threads.add(partitionThread);
+            }
+
+            // Wait for all threads to finish before proceeding to the next round
+            try {
+                for (Thread thread : threads) {
+                    thread.join();  // Wait for all threads to finish
                 }
+                threads.clear();  // Clear the thread list for the next round
+            } catch (InterruptedException e) {
+                e.printStackTrace();
             }
 
             // Optional sleep or delay if you want a pause between rounds
@@ -146,5 +173,6 @@ public class UserConsumer {
 
         System.out.println("✅ All partitions consumed.");
     }
+
 
 }

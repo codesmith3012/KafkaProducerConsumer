@@ -53,7 +53,29 @@ public class UserController {
     @PostMapping("/consume-round-robin")
     public String consumeUsersInRoundRobinOrder() {
         // Trigger the round-robin consumption of users from partitions
-        userConsumer.consumeUsersInRoundRobinOrder();
+        userConsumer.consumeUsersInRoundRobinOrderUsingThreads();
         return "✅ Consumption from partitions in round-robin order triggered.";
+    }
+    @PostMapping("/send-to-partitions")
+    public String sendUsersToPartitions() {
+        // Send 50 messages to partition 0
+        for (int i = 1; i <= 50; i++) {
+            User samridhUser = new User("samridh_" + i, "mypassword", "Delhi");
+            userProducer.sendUserToKafkaWithPartition(samridhUser, 0);
+        }
+
+        // Send 75 messages to partition 1
+        for (int i = 1; i <= 75; i++) {
+            User tarunUser = new User("tarun_" + i, "mypassword", "Noida");
+            userProducer.sendUserToKafkaWithPartition(tarunUser, 1);
+        }
+
+        // Send 100 messages to partition 2
+        for (int i = 1; i <= 100; i++) {
+            User alishaUser = new User("alisha_" + i, "mypassword", "Delhi");
+            userProducer.sendUserToKafkaWithPartition(alishaUser, 2);
+        }
+
+        return "✅ Users sent to Kafka in specified partitions.";
     }
 }
